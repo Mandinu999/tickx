@@ -1,0 +1,71 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(USER)  
+  createdAt    DateTime  @default(now())
+  bookings     Booking[]
+  events       Event[]
+}
+model Event {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  venueName     String
+  eventDate     DateTime
+  totalCapacity Int
+  organizerId   String?  
+  user          User?    @relation(fields: [organizerId], references: [id])
+  tickets       Ticket[]
+  bookings      Booking[]
+}
+
+model Ticket {
+  id          String       @id @default(uuid())
+  eventId     String
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seatNumber  String       // e.g., "Row A - Seat 12"
+  price       Decimal
+  status      TicketStatus @default(AVAILABLE)
+  lockedUntil DateTime?    // Used for the 5-minute checkout countdown
+  bookings    Booking[]
+
+  @@unique([eventId, seatNumber]) // Prevents creating duplicate seats for the same event
+}
+
+model Booking {
+  id            String        @id @default(uuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  eventId       String
+  event         Event         @relation(fields: [eventId], references: [id])
+  ticketId      String
+  ticket        Ticket        @relation(fields: [ticketId], references: [id])
+  paymentStatus PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+}
+
+enum TicketStatus {
+  AVAILABLE
+  LOCKED
+  SOLD
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+} 
+enum Role {
+  USER
+  ORGANIZER
+  ADMIN
+}
